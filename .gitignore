@@ -1,0 +1,4 @@
+# vs files
+out
+.vs
+CMakeSettings.json
