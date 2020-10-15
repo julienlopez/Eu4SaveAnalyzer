@@ -1,0 +1,467 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+   "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>ZPP Library --  A set of C++ classes for reading .ZIP archives</title>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=ISO-8859-1">
+</head>
+<body>
+<center>
+<h1>ZPP Library --  A set of C++ classes for reading .ZIP archives</h1>
+<i>Copyright &copy;1999 Michael Cuddy, Fen's Ende Software</i>
+<br>
+<i>minor modifications Copyright &copy;2000-2003 <a href="mailto:epajarre@koti.soon.fi">Eero Pajarre</a></i>
+<br>
+<i>Version 1.0 (first SourceForge release)</i>
+</center>
+
+<h2>Overview</h2>
+<p>
+Many programs, games especially, need to access large numbers of datafiles.
+These data files generally take up quite a bit of disk space not only for
+the storage of their data, but as "wasted" disk space due to cluster size
+limitations (on FAT12/FAT16 filesystems -- Fat32 has alleviated some of 
+this wastage by using smaller cluster sizes).  Traditionally, game 
+programmers have relied on one of two main methods of data storage:
+<ul>
+	<li>store each data file as a separate file
+	<li>store each data file in a custom archive format
+</ul>
+<p>
+The drawback to the first solution is the wasted disk space problem, as 
+well as the problem of slower installations (it's much slower to 
+create one thousand 1KB files than it is to create a single 1MB file) 
+and access (DOS/Win95 uses a linear search through the directory to open 
+files -- the more files you have in a single directory, the longer it 
+takes to open the files further down the list).
+<p>
+The second solution provides it's own pitfalls, first is that you must 
+write all your own image/sound/etc. loading routines which use a custom
+API for accessing the archived data. A further drawback is that you have to write your 
+own archive utility to build the archives in the first place.
+<p>
+The ZPP library addresses all of these concerns: 
+<ul>
+<li>Wasted disk space due to cluster size is alleviated by storing 
+all files in a single archive, further space savings is achieved through 
+support of the efficient DEFLATE compression method inside the archive.  
+<li>As the filenames in the archive are stored in an STL 
+<code>&lt;map&gt;</code> object, file lookups are done with an in-memory 
+binary search instead of a linear filesystem search, allowing for quick 
+lookup of files contained in the archive.  An implementation could be easily provided using the SGI 
+STL <code>&lt;hash_map&gt;</code> for even faster, albeit "unordered" 
+lookup.
+<li>Because the ZPP library manipulates standard .ZIP archives, off the shell 
+tools can be used to build the archives for distribution; this can
+have massive time-to-market implications as a programmer does not have
+to be dedicated to writing and maintaining an archival toolset.
+<li>The ZPP library allows the use of off-the-shelf data file libraries, 
+without recompilation, because of it's implementation of Standard C++ 
+<code>iostream</code> and <code>streambuf</code> classes (with a few caveats, see below).
+</ul>
+<p>
+In addition to providing "transparent" access to members of .ZIP 
+archives, ZPP provides a versioning feature which can be used to implement
+"patch" zip files to fix problems found after the release of a program
+without having to re-issue an entire .ZIP file.
+<p>	
+These benefits are a compelling reason to use .ZIP archives instead of 
+"rolling-your-own".  Indeed, recently a couple of popular games 
+(Starsiege: Tribes and QuakeIII) have moved to using .ZIP files 
+(previously, the Quake series went the custom route with the famous 
+".WAD" files).  The extensions are different, (".PK3" in the case of 
+Quake III, and ".VOL" files in the case of "Starsiege: Tribes") but the 
+files are standard .ZIP file and can be manipulated with off-the-shelf 
+tools -- this can have a BIG impact on time to market for a game because 
+the tools do not have to be written to manipulate archives; well developed
+and supported tools already exist in the marketplace and can be had for 
+free (Info ZIP), or for a small fee (PkZip).
+<p>
+ZPP uses the free ZLIB library to handle it's decompression / compression.
+It is compatible with files stored in .ZIP archives using the "STORE" 
+method and the "DEFLATE" method.
+
+<h2>Classes</h2>
+
+The core of ZPP consists of three core classes:
+<ul>
+	<li><code>zppZipArchive</code>
+	<li><code>zppZipFileInfo</code>
+	<li><code>zppZipReader</code>
+</ul>
+These classes wrap up the functionality of the 
+<a href="http://www.gzip.org/zlib/">ZLib</a> 
+library.
+<p>
+For interface to the rest of the world, objects of the following classes
+are created:
+<ul>
+	<li><code>zppstreambuf</code> (derived from streambuf)
+	<li><code>izppstream</code>  (derived from public istream)
+</ul>
+<p>
+The zppZipArchive class encapsulates all of the information about a .ZIP
+archive file (XXXX.zip).  It also supports global searching of files and
+text attributes (see below) attached to the .zip file comment which are
+parsed by the library and accessed through member functions in the 
+zppZipArchive class.
+<p>
+zppZipArchive objects contain a vector of zppZipFileInfo objects, each 
+one representing the information required to uncompress a particular 
+member of a .ZIP archive.  
+<p>
+The zppZipReader class encapsulates the decompression state for a 
+single file, and is the real worker behind the zppstreambuf class.  
+<p>
+The zppstreambuf class is an iostream wrapper around the zppZipReader
+class.  It supports all of the standard "istream"  functions for reading
+and can be passed to any file parsing routine which uses istreams.  
+<p>
+<b>IMPORTANT NOTE: because the compressed file data is decompressed on the 
+fly, <code>zppstreambuf::seekg()</code> will fail if the offset is not 0.
+</b> A future enhancement to the library will allow seeking on a file 
+which is not compressed (ZIP refers to this as the "stored" compression 
+method), or to have an entire file decompressed to memory when it's 
+<code>zppZipReader</code> object is created.
+<p>
+The izppstream class wraps a zppstreambuf for formatted input, and is a 
+standard "istream" type class.
+
+<h2>Attributes</h2>
+
+Most .ZIP archive utilities let you attach a "zip comment" to a zip file.
+This is text data that can be up to 64KB in length.  The ZPP library can
+(optionally) treat this data as a set of key/value pairs, and make those
+values available to the program.  The ZPP library expects the key/value
+data to be in a specific (but relatively flexible) format.  The data is
+in the form of a text file.  
+<p>
+The unit of parsing is a line. The line-end character can be UNIX 
+style (a single NL, ASCII 10), MAC style (a single CR, ASCII 13) 
+or DOS/Windows style (CR, ASCII 13, followed by NL, ASCII 10).  
+Continuation lines are not supported.
+<p>
+The first line of the file MUST be "<b><code>%ZPP%</code></b>" (without the 
+quotes).  If the ZPP library does not find this signal string, it will 
+not parse the attribute file. 
+<p>
+Each line of the attribute file defines a single key/data pair.  
+Blank lines (lines consisting of only spaces and a line-terminator) are
+ignored. Comment lines, beginning with '#', are also ignored.
+<p>
+A Key/value line is of one of the following four forms:
+<ul>
+	<li><code><i>KEY</i> = <i>DATA</i></code>
+	<li><code><i>KEY</i> = "<i>DATA</i>"</code>
+	<li><code><i>KEY</i> = '<i>DATA</i>'</code>
+	<li><code><i>KEY</i> = (<i>DATA</i>)</code>
+</ul>
+<p>
+In all three forms, the KEY is made up of non-whitespace characters and
+is terminated by the first space character.  A whitespace character is 
+ASCII 32 (space), or ASCII 10 (tab).
+<p>
+After the KEY, there can be optional whitespace.  An EQUALS sign "=" 
+separates the KEY from the DATA.  After the "=", any whitespace will be
+skipped.
+<p>
+In the first form, the data associated with the key is all non-whitespace
+characters up to the end-of-line or first whitespace encountered.
+Note that the data cannot have embedded whitespace in it.
+<p>
+The final three forms are used when there is a need to embed 
+whitespace in the data.  The data starts after the quote or parenthesis
+character, and continues to a matching, closing quote or parenthesis 
+character.  The data string cannot contain the character used to bracket
+it, and there is no way to escape an embedded quote character, thus 
+the three acceptable forms.
+<p>
+Example attributes:
+<blockquote><pre><code>
+	ZPP_PRIORITY = 2
+	ProgramTitle = "Mike's Wonderful program"
+	Quote3 = ("Hey, bob's dog bit me!", said Joe.)
+</code></pre></blockquote>
+<b>NOTE:</b>  Attribute names are <b>CASE SENSITIVE</b>.
+<p>
+The zppZipArchive::findAttr() member function is used to locate 
+attributes. 
+<p>
+<blockquote><pre><code>
+	zppZipArchive myZip("foo.zip");
+	string z;
+	
+	z = myZip.findAttr("Quote3");
+	
+	if (z == "") {
+	    cout &lt;&lt; "Quote3 attribute not found" &lt;&lt; endl; 
+	} else {
+		cout &lt;&lt; "Quote3 = " &lt;&lt; z &lt;&lt; endl;
+	}
+</code></pre></blockquote>
+The <code>zppZipArchive::attrExists()</code> member function can be used
+to determine if an attribute exists.
+<p>
+<b>NOTE:</b>
+Attributes beginning with the string "ZPP_" are reserved for use by the
+ZPP library.  There are currently two such attributes used: 
+ZPP_PRIORITY (see "Priorities", below), and ZPP_DIR_PREFIX (see "Directory 
+Prefix", below).
+<p>
+<h2>Priorities</h2>
+<p>
+When programs are distributed, there frequently arises the need to replace
+files which contained errors in the original distribution.  With all files
+packed inside of archives, it can be difficult to patch a multi-megabyte
+file in place on the user's system, so the ZPP library has the ability to
+assign a priority to a ZIP archive.  When ZIP archives are opened by the 
+ZPP library, all contained files are added to a global map of files with
+an attached priority.  The priority comes from a class static variable 
+which can be set before the zppZipArchive object is constructed, or 
+from a ZPP_PRIORITY attribute (see Attributes) above contained in the 
+.ZIP file when it's opened.  Files of higher priority replace those 
+of lower priority in the global map of files.
+<p>
+<b>NOTE: files not in a .ZIP archive on the hard disk have a higher priority
+than any .ZIP file -- they will be found first before the open .ZIP archives
+are searched.</b>
+
+<h2>Directory Prefix</h2>
+
+When a .ZIP archive is opened and the <code>zppZipArchive</code> object
+created, a string can optionally be prepended to all files contained 
+within.  This string is taken from the attribute "ZPP_DIR_PREFIX" 
+contained in the zip comment.
+<p>
+This feature can be used, to move all of the files contained in the zip 
+file "down" in the file hierarchy without having to have a separate
+subdirectory for them, or storing that subdirectory name when the archive
+is built.  For example, you might have a single zip file for each level
+of a game "level1.zip", "level2.zip", etc.  and the files stored in the
+.ZIP file are of the form "images/shot.bmp", "map.bsp", etc.
+If both level1.zip and level2.zip contained the same file names, 
+it might get confusing which file you're trying to access, so the level1.zip
+archive could contain a ZPP_DIR_PREFIX="Level1/" attribute: The files 
+contained within now become "Level1/images/shot.bmp", "Level1/map.bsp" 
+for the level1.zip
+
+<h2>Getting Started</h2>
+In the distribution archive, I've provided VC 5.0 (Visual Studio 97) project
+files to build the library and sample executable.  I don't provide the 
+built library.
+<p>
+To use the library in your own programs, put the generated library (zpp.lib)
+and it's header files (zpp.h, zpplib.h, zreader.h, izstream.h) where your
+compiler can find them.  Add <code>#include "zpp.h"</code> to your program,
+and you're off and running.  See the example source code included in the 
+archive.
+<p>
+<h2>Opening Archives</h2>
+A <code>zppZipArchive</code> object is associated with each .ZIP archive
+opened.  When the <code>zppZipArchive</code> object is constructed, the 
+name of the file to open is passed in to the constructor:
+<blockquote><pre><code>
+	zppZipArchive(string &_fn, ios::openmode _mode = ios::in, bool _makeGlobal = true);
+</code></pre></blockquote>
+<p>
+The <code>_fn</code> parameter is the name of the .ZIP file to open.  
+<p>
+The <code>_mode</code> argument currently <b>MUST</b> be 
+<code>ios::in</code> as only reading of .ZIP files is supported.  
+<code>ios::bin</code> is OR'ed into the file mode on platforms where 
+it's needed to access files in an untranslated way.
+<p>
+The <code>_makeGlobal</code> argument, if <code>true</code> (the default), 
+causes all files in the archive to be added to the global list of files (see 
+Opening Files, below).
+<p>
+When the <code>zppZipArchive</code> object is constructed, some basic
+integrity checks are done on the .ZIP file (placement of the central 
+directory, making sure that the archive is complete, not a part of a 
+multi-part archive, as these are not supported), and then the table of
+contents (list of files) is read in and stored in a 
+<code>&lt;vector&gt;</code> of <code>zppZipFileInfo</code> objects.
+Each file's name is also added to a <code>&lt;map&gt;</code> for quick 
+lookup on opening.
+<p>
+In the case of a "global" .zip file (one constructed with 
+<code>_makeGlobal</code> set to <code>true</code>), references to the
+files in the archive are inserted into a global map.
+<p>
+If present, the .ZIP archive's attributes are parsed and put in a map
+for future access.
+<p>
+To open up all archives in a particular directory (or matching a 
+particular wildcard), use the class static zppZipArchive::openAll() 
+function.  This function relies on a function in util.cpp which 
+enumerates a directory 
+matching a wildcard. Since directory enumeration is inherently a 
+non-portable operation, this file will need to be modified to support 
+different operating systems.
+
+<h2>Opening Files</h2>
+In general, files are opened by creating a set of <code>iostream</code> 
+objects for the file: the <code>zppstreambuf</code> object is the underlying
+stream buffer object, derived from <code>istreambuf</code>, and is used
+for raw file I/O.  For formatted file I/O, a <code>izppstream</code> object 
+can be constructed. Derived from <code>istream</code>, it can be used
+in nearly all places that an <code>ifstream</code> object can be used.
+<p>
+When opening files, there are two methods that can be used to decide
+which file to open: first, a file can be opened from a specific .ZIP
+archive (<code>zppZipArchive</code> object), or, a file can be opened
+by searching the global list of files.  Whether or not a file is 
+opened from the global list of files depends on if a <code>zppZipArchive</code>
+object is passed to the <code>zppstreambuf</code> or <code>izppstream</code>
+constructor.
+<p>
+Both the <code>zppstreambuf</code> and the <code>izppstream</code> objects
+support an "open and close" model as well as open-at-construction time model.
+
+<h2>Examples</h2>
+Several examples will eventually be included with the distribution.  
+Since this is an alpha release, only a small example is included.
+<ul>
+	<li><a href="ex1.cpp">ex1.cpp</a> -- 
+		A simple example showing how to dump the contents of a file 
+		contained in a ZIP archive.
+</ul>
+
+<h2>Portability</h2>
+I'm making the source code to the ZPP library available for porting.  
+Currently, it compiles and runs using the Microsoft provided STL with
+Microsoft Visual C++ 5.0 (Service Pack 3).  I will be testing it
+on other compilers / operating systems as those systems come available.
+<p>
+The underlying ZLIB library is very portable, and should port cleanly
+to any platform.
+<p>
+If you are interested in porting ZPP to another platform, please 
+use the SourceForge <a href="https://sourceforge.net/forum/forum.php?forum_id=286504"> forum </a> interface to contact the developers so that we can 
+coordinate efforts.
+
+<h2>Future Directions</h2>
+There are several planned enhancements for the ZPP library.  These features 
+will be available in a future release.
+<ul>
+	<li><b>Seekable streams</b> -- 
+		If a file is "stored" in a zip archive (i.e.: it's in the archive 
+		uncompressed), having the file seekable is quite easy.  
+		However, if the file is compressed, it must be fully decompressed
+		in memory to be seekable (one possible optimization is to only 
+		decompress the file to a memory buffer (or chain of memory buffers)
+		as it's seeked into -- further investigation is required before
+		making that architecture decision).
+		
+	<li><b>Examples</b> --
+		More examples should be provided; for now, you have to <b>UTSL</b>.
+		<i>(Use The Source, Luke!)</i>
+		
+	<li><b>Creating / Writing archives</b> -- 
+		Creating new, and appending to existing archives should be 
+		supported in a future release. Based on user feedback, I'll
+		decide if removing files from an archive is needed.
+		
+</ul>
+If you have new ideas about where the ZPP library should go, or even
+better, code to implement those ideas, <a
+href="https://sourceforge.net/forum/forum.php?forum_id=286502"> contact
+us! </a>
+
+<h2>Known Bugs</h2>
+This section will be for known, but not-yet-fixed bugs.
+
+<ul>
+<li>The current release of the ZPP is based on a version which has
+been used a lot, but not in many applications. It is also possible
+that the creation of this release has broken things. Please report any
+bugs to <a href="https://sourceforge.net/tracker/?atid=570786%26group_id=83822">
+SourceForge bug tracking</a>.
+</ul>
+<p>
+
+<h2>Disclaimer</h2>
+This library is provided AS-IS.  Full source is provided, that's about as 
+much disclosure as you could want.  If you run this code without looking
+at it, and it blows up your hard-drive, tough.   This code is relatively
+stable, but is under active development -- and it hasn't blown up my 
+hard drive ... <i>yet</i>.
+<h2>License</h2>
+
+Copyright 1999 Michael Cuddy. Some modifications Copyright 2000-2003
+Eero Pajarre. Code is licensed under the MIT license.
+<p>
+<big>
+The original license from Michael Cuddy contained the following:
+</big>
+<p>
+"This code is based on code from the ZPP library, by Jean-Loup Gailly and 
+Mark Adler.  They wrote the real meat-and-potatoes code here, I just wrapped
+it up with some semantic sugar.  See the links section for the official
+ZLib home page.
+<p>
+<big>
+You may NOT use this code in any mission-critical, or life-support project;
+I wouldn't trust my code with my life, and neither should you."
+</big>
+<p>		
+<h2>Version History</h2>
+I don't expect to update this document, or this code very often, but when I
+do, I'll put that information here.
+<ul>
+<li>Aug 12, 1999 -- 0.1 -- First Alpha Release
+<li>Jan 17, 2000 -- 0.2 -- Second Alpha Release 
+<ul>
+	<li> Fixed a few little bugs
+	<li> Updated to include embryonic (and untested) support for zip 
+	     file encryption.
+</ul>
+<li>Jun 21, 2003 -- 1.0 -- SourceForge Release
+<ul>
+	<li> setting up SourceForge site
+        <li> changed license to MIT license (with permission from
+	Michael Cuddy)
+</ul>
+</ul>
+<h2>Links</h2>
+Related and not-so-related links:
+<ul>
+        <li><a href="http://sourceforge.net/projects/zpp-library/"> The official ZPP site </a>
+	<li><a href="http://www.fensende.com/~mcuddy/"> Michael Cuddy's homepage </a> 
+	
+	<li><a href="http://www.gzip.org/zlib/">The ZLIB home page</a> -- 
+		The official home page for the underlying decompression engine
+		in the ZPP library.  Free and unencumbered for commercial use,
+		the ZLIB library is an excellent compression / decompression
+		library capable of handing GZIP'ed files as well as the
+		"DEFLATE" compression method of .ZIP files.  Many user
+		contributed tools and full source code round out this excellent
+		package.
+		
+	<li><a href="http://www.pkware.com">The PkWare Home Page</a> -- 
+		Makers of the excellent archival utility "pkzip" for Windows.  
+		Pkzip is fast and easy to use.  It provides a drag-and-drop user
+		interface as well as integration with the Windows95/NT desktop.
+		
+	<li><a href="http://www.info-zip.org/pub/infozip/">The Info-ZIP home page</a> -- 
+		Reportedly one of "the most portable programs in the world".  
+		InfoZip's implementation of ZIP archive tools have been ported 
+		to nearly every existing computing platform.
+	<li><a href="http://www.winzip.com/"> Winzip </a> --
+                Popular ZIP implementation for Windows.
+	<li><a href="http://www.dinkumware.com/">Dinkumware, Ltd.</a> -- 
+		Developers of a third-party standard C++ library (and the original
+	        developers of the STL library included with Visual C++
+		
+	<li><a href="http://www.stlport.org/">STLport</a> -- 
+	        Portable and free implementation for C++ library
+
+</ul>
+
+
+<a href="http://sourceforge.net"><img src="http://sourceforge.net/sflogo.php?group_id=YOUR_GROUP_ID_GOES_HERE&amp;type=1" width="88" height="31" border="0" alt="SourceForge.net Logo" ></a>
+
+<a href="http://sourceforge.net/projects/zpp-library/"> Project summary page </a>
+
+</body>
+</html>

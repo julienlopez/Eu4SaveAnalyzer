@@ -1,0 +1,14 @@
+This library requires the Zlib library in order to do something
+usefull. Get it from: http://www.gzip.org/zlib/ If you don't have it
+already. If you use the attached VC++ workspace files, you must
+install the zlib directory into this directory.
+
+At the moment there is no makefile included. I suggest simply
+including the source files, and the zlib files into your
+current existing makefile.
+
+Use the http://zpp-library.sourceforge.net forums if you need more
+information, or contact me directly using email: 
+epajarre @ kolumbus . fi
+
+
