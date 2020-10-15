@@ -3,9 +3,7 @@ cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 set(LIBRARY_TARGET_NAME ZppLibrary)
 
 set(LIB_ROOT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/")
-#file(GLOB_RECURSE LIB_ALL_SRC "${LIB_ROOT_DIRECTORY}/*.cpp")
-# set(LIB_ALL_SRC izstream.cpp Zpp.cpp)
-set(LIB_ALL_SRC Zpp.cpp)
+set(LIB_ALL_SRC Zpp.cpp Util.cpp izstream.cpp)
 file(GLOB_RECURSE LIB_ALL_HDR "${LIB_ROOT_DIRECTORY}/*.hpp")
 
 include_directories(${LIB_ROOT_DIRECTORY})

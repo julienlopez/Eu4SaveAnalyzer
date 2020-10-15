@@ -23,4 +23,5 @@ option(BUILD_SHARED_LIBS "Build libraries as shared as opposed to static" OFF)
 # include_directories(3rd_party/expected/include)
 
 add_subdirectory(3rd_party/zpp-1.0-alpha)
+add_subdirectory(test)
 
