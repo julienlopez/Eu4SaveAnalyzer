@@ -1,5 +1,6 @@
 #pragma once
 
+#include <any>
 #include <iosfwd>
 #include <stack>
 #include <vector>
@@ -9,7 +10,7 @@ void format(std::ostream& o, uint8_t byte);
 class Parser
 {
 public:
-	// using DataContainer = std::vector<uint8_t>;
+	using DataBuffer = std::vector<uint8_t>;
 	using DataContainer = std::stack<uint8_t>;
 
 	Parser() = delete;
@@ -19,6 +20,14 @@ public:
 
 private:
     DataContainer m_data;
+    std::vector<std::any> m_result;
 
-	std::vector<uint8_t> popN(const std::size_t N);
+	/**
+	* @brief reads N bytes from m_data
+	*/
+	DataBuffer popN(const std::size_t N);
+
+	void parseNext();
+
+	static bool isAnInt(const DataBuffer& buffer);
 };
