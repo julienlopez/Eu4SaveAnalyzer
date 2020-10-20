@@ -1,15 +1,9 @@
+#include "parser.hpp"
+
 #include "Zpp.h"
 
 #include <filesystem>
 #include <iostream>
-
-void format(std::ostream& o, uint8_t byte)
-{
-    if(std::isalpha(byte) || std::isdigit(byte) || byte == 0x28)
-        std::cout << byte;
-    else
-        std::cout << "0x" << std::hex << std::setfill('0') << std::setw(2) << (unsigned int)byte;
-}
 
 int main(int argc, char* argv[])
 {
@@ -40,5 +34,9 @@ int main(int argc, char* argv[])
     for(const auto i : content)
         format(std::cout, i);
     std::cout << std::endl;
+
+    Parser p{std::stack<uint8_t>{std::deque<uint8_t>{rbegin(content), rend(content)}}};
+    p.run();
+
     return 0;
 }
