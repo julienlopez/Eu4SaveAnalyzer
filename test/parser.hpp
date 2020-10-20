@@ -30,4 +30,6 @@ private:
 	void parseNext();
 
 	static bool isAnInt(const DataBuffer& buffer);
+	static bool isAFloat(const DataBuffer& buffer);
+	static bool isAString(const DataBuffer& buffer);
 };

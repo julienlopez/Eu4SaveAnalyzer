@@ -100,6 +100,22 @@ void Parser::parseNext()
         std::cout << "parsing int : " << value << std::endl;
         m_result.push_back(toInt(value));
     }
+    else if(tag == DataBuffer{0x0E, 0x00})
+    {
+        const auto value = popN(1);
+        std::cout << "parsing bool : " << value << std::endl;
+        m_result.push_back(value.front() != 0);
+    }
+    else if(isAFloat(tag))
+    {
+        std::cout << "parsing float : " << std::endl;
+    
+    }
+    else if(isAString(tag))
+    {
+        std::cout << "parsing string : " << std::endl;
+    
+    }
     else
         std::cout << "nope" << std::endl;
     // if(!m_data.empty()) parseNext();
@@ -108,4 +124,14 @@ void Parser::parseNext()
 bool Parser::isAnInt(const DataBuffer& buffer)
 {
     return buffer == DataBuffer{0x0c, 0x00} || buffer == DataBuffer{0x14, 0x00};
+}
+
+bool Parser::isAFloat(const DataBuffer& buffer)
+{
+    return buffer == DataBuffer{0x0d, 0x00} || buffer == DataBuffer{0x67, 0x00};
+}
+
+bool Parser::isAString(const DataBuffer& buffer)
+{
+    return buffer == DataBuffer{0x0f, 0x00} || buffer == DataBuffer{0x17, 0x00};
 }
